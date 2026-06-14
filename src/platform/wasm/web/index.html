@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sqminify - Web Workbench</title>
+    <style>
+        :root {
+            --bg-color: #1e1e2e;
+            --panel-bg: #252538;
+            --text-color: #cdd6f4;
+            --accent-color: #89b4fa;
+            --border-color: #45475a;
+            --input-bg: #11111b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: var(--panel-bg);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        select, button {
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+
+        select:focus, button:focus {
+            border-color: var(--accent-color);
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: var(--input-bg);
+            font-weight: bold;
+            border: none;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        /* Secondary visual style for the action buttons */
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(137, 180, 250, 0.1);
+        }
+
+        .workspace {
+            flex: 1;
+            display: flex;
+            padding: 1rem;
+            gap: 1rem;
+            height: calc(100vh - 65px);
+        }
+
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid var(--border-color);
+            color: #a6adc8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 35px;
+        }
+
+        textarea, pre {
+            flex: 1;
+            width: 100%;
+            height: calc(100% - 35px);
+            background-color: var(--input-bg);
+            color: #a6e3a1;
+            font-family: "Fira Code", "Courier New", Courier, monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            padding: 1rem;
+            border: none;
+            resize: none;
+            outline: none;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-y: auto;
+            color: #f9e2af;
+        }
+
+        .status-bar {
+            padding: 0.3rem 1rem;
+            font-size: 0.75rem;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-top: 1px solid var(--border-color);
+            text-align: right;
+            color: #585b70;
+        }
+        
+        .panel-copy-btn {
+            background-color: var(--input-bg);
+            padding: 0.15rem 0.5rem;
+            font-size: 0.7rem;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            color: #a6adc8;
+            font-weight: normal;
+        }
+        
+        .panel-copy-btn:hover {
+            border-color: var(--accent-color);
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+    <header>
+	<h1>Sqminify Web Assembly Workbench <span id="versionTag" style="font-size: 0.75rem; color: #a6adc8; margin-left: 0.5rem; font-weight: normal; font-family: monospace;">(WASM Build: Loading...)</span></h1>
+        <div class="controls">
+            <select id="langSelect">
+                <option value="js">JavaScript</option>
+                <option value="c">C Source</option>
+                <option value="c_no_comments">C (Strip Comments Only)</option>
+                <option value="make">Makefile</option>
+            </select>
+            <button id="minifyBtn">Minify Output</button>
+        </div>
+    </header>
+
+    <div class="workspace">
+        <!-- Input Panel -->
+        <div class="editor-container">
+            <div class="panel-header">Source Input Workspace</div>
+            <textarea id="srcInput" placeholder="Paste or type your source code execution stream here..."></textarea>
+            <div class="status-bar" id="inputStats">0 chars</div>
+        </div>
+
+        <!-- Output Panel -->
+        <div class="editor-container">
+            <div class="panel-header">
+                <span>Compressed Production Stream</span>
+                <!-- Clean interactive clipboard hook button -->
+                <button id="copyBtn" class="panel-copy-btn">Copy Code</button>
+            </div>
+            <pre id="minifyOutput">Output file footprint compiles here dynamically...</pre>
+            <div class="status-bar" id="outputStats">0 chars</div>
+        </div>
+    </div>
+
+    <script type="module" src="./index.js"></script>
+</body>
+</html>
+
