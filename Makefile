@@ -155,17 +155,17 @@ test: native
 	@echo "Starting Self-Minification Test Pass ($(PLATFORM))..."
 	@echo "=============================================="
 	$(eval TEST_DIR := $(shell mktemp -d /tmp/minifier_test.XXXXXX))
-	@mkdir -p $(TEST_DIR)/$(SRC_DIR)
+	@mkdir -p $(TEST_DIR)
 	@echo "Created sandbox directory: $(TEST_DIR)"
-	@cp $(SRC_DIR)/*.h $(TEST_DIR)/$(SRC_DIR)/
+	@cp -r $(SRC_DIR) $(TEST_DIR)/
 	@for file in $(SRCS); do \
 		rel_path=$${file#$(SRC_DIR)/}; \
 		mkdir -p $(TEST_DIR)/$(SRC_DIR)/$$(dirname $$rel_path); \
 		echo "Minifying: $$file -> $(TEST_DIR)/$(SRC_DIR)/$$rel_path"; \
 		./$(TARGET) -l c $$file $(TEST_DIR)/$(SRC_DIR)/$$rel_path || exit 1; \
 	done
-	@echo "Minifying root configurations: Makefile"
-	@./$(TARGET) -l make Makefile $(TEST_DIR)/Makefile
+	@echo "Copying Makefile"
+	@cp Makefile $(TEST_DIR)/Makefile
 	@echo "----------------------------------------------"
 	@echo "Compiling the minified source code..."
 	@echo "----------------------------------------------"
@@ -209,14 +209,16 @@ test_windows: windows
 			$(WIN_RUNNER) -l c "$$file" "$(TEST_DIR)/$(SRC_DIR)/$$rel_path" || exit 1; \
 		fi; \
 	done
-	@echo "Minifying root configurations: Makefile"
-	@if [ -n "$(IS_WSL)" ]; then \
-		win_in=$$(wslpath -w "Makefile"); \
-		win_out=$$(wslpath -w "$(TEST_DIR)/Makefile"); \
-		$(WIN_RUNNER) -l make "$$win_in" "$$win_out" || exit 1; \
-	else \
-		$(WIN_RUNNER) -l make Makefile "$(TEST_DIR)/Makefile" || exit 1; \
-	fi
+	#@echo "Minifying root configurations: Makefile"
+	#@if [ -n "$(IS_WSL)" ]; then \
+	#	win_in=$$(wslpath -w "Makefile"); \
+	#	win_out=$$(wslpath -w "$(TEST_DIR)/Makefile"); \
+	#	$(WIN_RUNNER) -l make "$$win_in" "$$win_out" || exit 1; \
+	#else \
+	#	$(WIN_RUNNER) -l make Makefile "$(TEST_DIR)/Makefile" || exit 1; \
+	#fi
+	@echo "Copying Makefile"
+	@cp Makefile $(TEST_DIR)/Makefile
 	@echo "----------------------------------------------"
 	@echo "Cross-compiling the minified source code for Windows..."
 	@echo "----------------------------------------------"

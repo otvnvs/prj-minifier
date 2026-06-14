@@ -1,116 +1,168 @@
-// src/engines/c.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include "../minifier.h"
 
-char* remove_comments(char* buffer) {
-    char* new_buffer = (char*)malloc(strlen(buffer) + 1);
-    if (new_buffer == NULL) {
-        fprintf(stderr, "Error: Memory allocation failed\n");
-        exit(1);
-    }
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#define EMSCRIPTEN_EXPORT EMSCRIPTEN_KEEPALIVE
+#else
+#define EMSCRIPTEN_EXPORT
+#endif
 
-    int i = 0, j = 0;
-    while (buffer[i] != '\0') {
-        if (buffer[i] == '/' && buffer[i + 1] == '/') {
-            while (buffer[i] != '\n' && buffer[i] != '\0') i++;
-        }
-        else if (buffer[i] == '/' && buffer[i + 1] == '*') {
-            i += 2;
-            while (buffer[i] != '\0' && (buffer[i] != '*' || buffer[i + 1] != '/')) i++;
-            if (buffer[i] != '\0') i += 2;
-        }
-        else {
-            new_buffer[j++] = buffer[i++];
-        }
-    }
-    new_buffer[j] = '\0';
-    return new_buffer;
+static int is_c_symbol(char c) {
+    return (c == '=' || c == '+' || c == '-' || c == '*' || c == '/' || 
+            c == '%' || c == '(' || c == ')' || c == '{' || c == '}' || 
+            c == '[' || c == ']' || c == ',' || c == ';' || c == ':' || 
+            c == '?' || c == '!' || c == '&' || c == '|' || c == '<' || c == '>');
 }
 
-char* minify_c_code(char* code) {
-    char* new_code = (char*)malloc(strlen(code) + 1);
-    if (new_code == NULL) {
-        fprintf(stderr, "Error: Memory allocation failed\n");
-        exit(1);
+static int is_alphanumeric(char c) {
+    return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+            (c >= '0' && c <= '9') || c == '_' || c == '$');
+}
+
+// Robust helper to track if a quote symbol is actually escaped,
+// taking consecutive backslashes into account (e.g., '\\' means the quote is NOT escaped)
+static int is_char_escaped(const char *source, size_t i) {
+    if (i == 0) return 0;
+    int count = 0;
+    size_t back = i - 1;
+    while (back > 0 && source[back] == '\\') {
+        count++;
+        back--;
     }
+    if (back == 0 && source[back] == '\\') {
+        count++;
+    }
+    return (count % 2 != 0);
+}
 
-    int i = 0, j = 0;
-    while (code[i] != '\0') {
-        if (isalpha((unsigned char)code[i]) || code[i] == '_') {
-            int start = i;
-            while (isalnum((unsigned char)code[i]) || code[i] == '_') i++;
-            int len = i - start;
-            
-            char* temp = (char*)malloc(len + 1);
-            memcpy(temp, &code[start], len);
-            temp[len] = '\0';
-
-            memcpy(&new_code[j], temp, len);
-            j += len;
-
-            if (is_c_keyword(temp)) {
-                while (isspace((unsigned char)code[i])) i++;
-                if (code[i] != '(') new_code[j++] = ' ';
-            } else {
-                while (isspace((unsigned char)code[i])) i++;
-                if (isalnum((unsigned char)code[i]) || code[i] == '_') new_code[j++] = ' ';
-            }
-            free(temp);
+EMSCRIPTEN_EXPORT char *remove_comments(const char *source) {
+    size_t len = strlen(source);
+    char *result = malloc(len + 1);
+    if (!result) return NULL;
+    
+    size_t j = 0;
+    int in_string = 0;
+    int in_char = 0;
+    
+    for (size_t i = 0; i < len; i++) {
+        // FIX 1: Use the robust backslash tracker helper
+        int is_escaped = is_char_escaped(source, i);
+        
+        if (source[i] == '"' && !is_escaped && !in_char) {
+            in_string = !in_string;
+        } else if (source[i] == '\'' && !is_escaped && !in_string) {
+            in_char = !in_char;
         }
-        else if (code[i] == '#') {
-            while (code[i] != '\n' && code[i] != '\0') new_code[j++] = code[i++];
-            if (code[i] == '\n') new_code[j++] = code[i++];
-        }
-        else if (isspace((unsigned char)code[i])) {
-            i++;
-        }
-        else if (code[i] == ';' || code[i] == ',' || code[i] == '{' || code[i] == '}' || code[i] == '(' || code[i] == ')') {
-            new_code[j++] = code[i++];
-            while (isspace((unsigned char)code[i])) i++;
-        }
-        else if (code[i] == '\'') {
-            i++; 
-            int num = -1;
-            if (code[i] != '\\') {
-                num = code[i++];
-                if (code[i] == '\'') i++;
-            } else {
-                i++;
-                switch(code[i]) {
-                    case 'a':  num = '\a'; break;
-                    case 'b':  num = '\b'; break;
-                    case 'f':  num = '\f'; break;
-                    case 'n':  num = '\n'; break;
-                    case 'r':  num = '\r'; break;
-                    case 't':  num = '\t'; break;
-                    case 'v':  num = '\v'; break;
-                    case '\\': num = '\\'; break;
-                    case '\'': num = '\''; break;
-                    case '"':  num = '\"'; break;
-                    case '?':  num = '\?'; break;
-                    default:   num = code[i]; break; 
+        
+        if (!in_string && !in_char) {
+            if (source[i] == '/' && source[i + 1] == '/') {
+                while (i < len && source[i] != '\n') {
+                    i++;
                 }
-                i++;
-                if (code[i] == '\'') i++;
+                if (i < len) {
+                    result[j++] = source[i];
+                }
+                continue;
             }
-            j += sprintf(new_code + j, "%d", num);
-        }
-        else if (code[i] == '"') {
-            new_code[j++] = code[i++];
-            while (code[i] != '"' && code[i] != '\0') {
-                if (code[i] == '\\' && code[i+1] != '\0') new_code[j++] = code[i++];
-                new_code[j++] = code[i++];
+            if (source[i] == '/' && source[i + 1] == '*') {
+                i += 2;
+                while (i < len - 1 && !(source[i] == '*' && source[i + 1] == '/')) {
+                    i++;
+                }
+                if (i < len) i++; 
+                continue;
             }
-            if (code[i] == '"') new_code[j++] = code[i++];
         }
-        else {
-            new_code[j++] = code[i++];
-        }
+        result[j++] = source[i];
     }
-    new_code[j] = '\0';
-    return new_code;
+    result[j] = '\0';
+    return result;
+}
+
+EMSCRIPTEN_EXPORT char *minify_c_code(const char *source) {
+    size_t len = strlen(source);
+    char *result = malloc(len + 1);
+    if (!result) return NULL;
+
+    size_t j = 0;
+    int in_string = 0;
+    int in_char = 0;
+
+    for (size_t i = 0; i < len; i++) {
+        // FIX 2: Use the robust backslash tracker helper here too
+        int is_escaped = is_char_escaped(source, i);
+
+        int old_string = in_string;
+        int old_char = in_char;
+
+        if (source[i] == '"' && !is_escaped && !in_char) {
+            in_string = !in_string;
+        } else if (source[i] == '\'' && !is_escaped && !in_string) {
+            in_char = !in_char;
+        }
+
+        if (old_string || old_char || source[i] == '"' || source[i] == '\'') {
+            result[j++] = source[i];
+            continue;
+        }
+
+        // Protect Preprocessor Directives (#define, #ifdef, etc.)
+        if (source[i] == '#' && (j == 0 || result[j - 1] == '\n')) {
+            while (i < len) {
+                if (source[i] == '\n' || source[i] == '\r') {
+                    size_t back = i;
+                    while (back > 0 && (source[back - 1] == ' ' || source[back - 1] == '\t')) {
+                        back--;
+                    }
+                    if (back > 0 && source[back - 1] == '\\') {
+                        result[j++] = source[i++];
+                        continue;
+                    }
+                    break; 
+                }
+                result[j++] = source[i++];
+            }
+            result[j++] = '\n'; 
+            if (i >= len) break;
+            continue;   
+        }
+
+        // High-Compression Spacing Engine Block
+        if (source[i] == ' ' || source[i] == '\t' || source[i] == '\n' || source[i] == '\r') {
+            size_t next = i + 1;
+            while (next < len && (source[next] == ' ' || source[next] == '\t' || source[next] == '\n' || source[next] == '\r')) {
+                next++;
+            }
+            
+            if (next < len && source[next] == '#') {
+                if (j > 0 && result[j - 1] != '\n') {
+                    result[j++] = '\n';
+                }
+                i = next - 1;
+                continue;
+            }
+            
+            if (j == 0 || result[j - 1] == '\n' || next >= len || source[next] == '\n' || source[next] == '\r' || source[next] == '#') {
+                i = next - 1;
+                continue;
+            }
+            if (is_c_symbol(result[j - 1]) || is_c_symbol(source[next])) {
+                i = next - 1;
+                continue;
+            }
+            if (is_alphanumeric(result[j - 1]) && is_alphanumeric(source[next])) {
+                result[j++] = ' ';
+            }
+            i = next - 1;
+            continue;
+        }
+
+        result[j++] = source[i];
+    }
+    result[j] = '\0';
+    return result;
 }
 

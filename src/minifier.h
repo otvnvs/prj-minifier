@@ -21,8 +21,8 @@ char* file_read(const char* filepath);
 int is_c_keyword(const char* str);
 
 // Language Engines
-char* remove_comments(char* buffer);
-char* minify_c_code(char* code);
+char* remove_comments(const char* buffer);
+char* minify_c_code(const char* code);
 char* minify_makefile_code(char* code);
 char* minify_js_code(const char* code);
 const char *get_build_number(void);
