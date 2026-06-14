@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sqminify - Web Workbench</title>
+    <title>minify</title>
     <style>
         :root {
             --bg-color: #1e1e2e;
@@ -170,12 +170,12 @@
 </head>
 <body>
     <header>
-	<h1>Sqminify Web Assembly Workbench <span id="versionTag" style="font-size: 0.75rem; color: #a6adc8; margin-left: 0.5rem; font-weight: normal; font-family: monospace;">(WASM Build: Loading...)</span></h1>
+	<h1>Minify <span id="versionTag" style="font-size: 0.75rem; color: #a6adc8; margin-left: 0.5rem; font-weight: normal; font-family: monospace;">(WASM Build: Loading...)</span></h1>
         <div class="controls">
             <select id="langSelect">
-                <option value="js">JavaScript</option>
-                <option value="c">C Source</option>
+                <option value="c">C</option>
                 <option value="c_no_comments">C (Strip Comments Only)</option>
+                <option value="js">JS</option>
                 <option value="make">Makefile</option>
             </select>
             <button id="minifyBtn">Minify Output</button>
@@ -185,7 +185,7 @@
     <div class="workspace">
         <!-- Input Panel -->
         <div class="editor-container">
-            <div class="panel-header">Source Input Workspace</div>
+            <div class="panel-header">Input</div>
             <textarea id="srcInput" placeholder="Paste or type your source code execution stream here..."></textarea>
             <div class="status-bar" id="inputStats">0 chars</div>
         </div>
@@ -193,11 +193,11 @@
         <!-- Output Panel -->
         <div class="editor-container">
             <div class="panel-header">
-                <span>Compressed Production Stream</span>
+                <span>Output</span>
                 <!-- Clean interactive clipboard hook button -->
                 <button id="copyBtn" class="panel-copy-btn">Copy Code</button>
             </div>
-            <pre id="minifyOutput">Output file footprint compiles here dynamically...</pre>
+            <pre id="minifyOutput"></pre>
             <div class="status-bar" id="outputStats">0 chars</div>
         </div>
     </div>
