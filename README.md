@@ -17,6 +17,8 @@ Code minifier in C. [Live Preview](https://otvnvs.github.io/prj-minifier/)
 make native
 make windows
 make wasm
+make so
+make dll
 ```
 
 ## Running
