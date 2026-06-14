@@ -69,6 +69,7 @@ EMSCRIPTEN_EXPORT char *minify_js_code(const char *source) {
                 while (i < len && source[i] != '\n' && source[i] != '\r') {
                     i++;
                 }
+                continue; // FIX: Force immediate re-evaluation cycle on the newline token
             }
 
             // 3. Robust Multi-Line and Empty Line Collapsing Pass
@@ -96,7 +97,7 @@ EMSCRIPTEN_EXPORT char *minify_js_code(const char *source) {
                 }
 
                 if (newline_count > 0) {
-                    // FIX: If the previous written token was a semicolon or brace, 
+                    // If the previous written token was a semicolon or brace, 
                     // skip emitting the newline entirely to flatten the code out!
                     if (j > 0 && result[j - 1] != ';' && result[j - 1] != '{' && result[j - 1] != '}' && result[j - 1] != '\n') {
                         result[j++] = '\n';
@@ -141,4 +142,3 @@ EMSCRIPTEN_EXPORT char *minify_js_code(const char *source) {
     result[j] = '\0';
     return result;
 }
-
